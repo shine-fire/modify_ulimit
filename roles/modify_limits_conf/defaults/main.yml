@@ -1,0 +1,5 @@
+---
+# defaults file for roles/modify_limits_conf
+core_vars: 102400
+nofile_vars: 65535
+nproc_vars: 65535

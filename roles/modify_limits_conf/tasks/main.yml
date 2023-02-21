@@ -1,0 +1,78 @@
+---
+# tasks file for roles/modify_limits_conf
+
+- name: Fetch the current system timestamp
+  run_once: yes
+  set_fact:
+    fetch_timestamp: "{{ lookup('pipe', 'date +%Y%m%d-%H%M') }}"
+  delegate_to: localhost
+
+
+- name: check current limits.conf
+  shell: |
+    egrep -v "^#|^$" /etc/security/limits.conf
+  ignore_errors: yes
+  register: check_current_limits_result
+
+- name: output check result
+  debug: 
+    msg: "{{ check_current_limits_result.stdout_lines }}"
+  when: check_current_limits_result.rc == 0
+
+
+- name: backup current limits.conf
+  copy: 
+    src: "/etc/security/limits.conf"
+    dest: "/etc/security/limits.conf-bak-{{ fetch_timestamp }}"
+    remote_src: yes
+
+
+- name: check core
+  shell: |
+    egrep -v "^#|^$" /etc/security/limits.conf | grep core | awk '{print $NF}'
+  changed_when: false
+  register: check_core_result
+
+- name: modify core
+  shell: |
+    sed -i "s/^\([a-z,A-Z,*].*core\).*/\1    {{ core_vars }}/g" /etc/security/limits.conf
+  when: item < core_vars
+  loop: "{{ check_core_result.stdout_lines }}"
+
+
+- name: check nofile
+  shell: |
+    egrep -v "^#|^$" /etc/security/limits.conf | grep nofile | awk '{print $NF}'
+  changed_when: false
+  register: check_nofile_result
+
+- name: modify nofile
+  shell: |
+    sed -i "s/^\([a-z,A-Z,*].*nofile\).*/\1    {{ nofile_vars }}/g" /etc/security/limits.conf
+  when: item < nofile_vars
+  loop: "{{ check_nofile_result.stdout_lines }}"
+
+
+- name: check nproc
+  shell: |
+    egrep -v "^#|^$" /etc/security/limits.conf | grep nproc | awk '{print $NF}'
+  changed_when: false
+  register: check_nproc_result
+
+- name: modify nproc
+  shell: |
+    sed -i "s/^\([a-z,A-Z,*].*nproc\).*/\1    {{ nproc_vars }}/g" /etc/security/limits.conf
+  when: item < nproc_vars
+  loop: "{{ check_nproc_result.stdout_lines }}"
+
+
+- name: check modified limits.conf
+  shell: |
+    egrep -v "^#|^$" /etc/security/limits.conf
+  ignore_errors: yes
+  register: check_modified_limits_result
+
+- name: output modified result
+  debug: 
+    msg: "{{ check_modified_limits_result.stdout_lines }}"
+  when: check_modified_limits_result.rc == 0

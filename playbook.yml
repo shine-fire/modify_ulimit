@@ -1,0 +1,10 @@
+---
+- name: playbook main file.
+  hosts: all
+  #remote_user: cradmin
+  #become: yes
+  #become_method: sudo
+  #gather_facts: True 
+  gather_facts: False
+  roles:
+    - modify_limits_conf
