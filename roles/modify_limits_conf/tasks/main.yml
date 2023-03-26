@@ -4,7 +4,7 @@
 - name: Fetch the current system timestamp
   run_once: yes
   set_fact:
-    fetch_timestamp: "{{ lookup('pipe', 'date +%Y%m%d-%H%M') }}"
+    fetch_timestamp: "{{ lookup('pipe', 'date +%Y%m%d') }}"
   delegate_to: localhost
 
 
@@ -15,55 +15,147 @@
   register: check_current_limits_result
 
 - name: output check result
-  debug: 
+  debug:
     msg: "{{ check_current_limits_result.stdout_lines }}"
   when: check_current_limits_result.rc == 0
 
 
 - name: backup current limits.conf
-  copy: 
+  copy:
     src: "/etc/security/limits.conf"
     dest: "/etc/security/limits.conf-bak-{{ fetch_timestamp }}"
     remote_src: yes
 
 
-- name: check core
+
+
+- name: check global core
+  shell: |
+    egrep -v "^#|^$" /etc/security/limits.conf | grep core | grep "*"
+  changed_when: false
+  ignore_errors: yes
+  register: check_default_core_result
+
+- name: Add global core
+  lineinfile:
+    path: /etc/security/limits.conf
+    state: present
+    line: "*  soft  core  {{ core_vars }}\n*  hard  core  {{ core_vars }}"
+  when: check_default_core_result.rc != 0
+
+
+- name: check soft core
+  shell: |
+    egrep -v "^#|^$" /etc/security/limits.conf | grep core | grep soft | awk '{print $NF}'
+  changed_when: false
+  register: check_soft_core_result
+
+- name: modify soft core
+  shell: |
+    sed -i "s/^\([a-z,A-Z,*].*soft.*core\).*/\1    {{ core_vars }}/g" /etc/security/limits.conf
+  when: item|int < core_vars|int
+  loop: "{{ check_soft_core_result.stdout_lines }}"
+
+
+- name: check hard core
   shell: |
     egrep -v "^#|^$" /etc/security/limits.conf | grep core | awk '{print $NF}'
   changed_when: false
-  register: check_core_result
+  register: check_hard_core_result
 
-- name: modify core
+- name: modify hard core
   shell: |
-    sed -i "s/^\([a-z,A-Z,*].*core\).*/\1    {{ core_vars }}/g" /etc/security/limits.conf
-  when: item < core_vars
-  loop: "{{ check_core_result.stdout_lines }}"
+    sed -i "s/^\([a-z,A-Z,*].*hard.*core\).*/\1    {{ core_vars }}/g" /etc/security/limits.conf
+  when: item|int < core_vars|int
+  loop: "{{ check_hard_core_result.stdout_lines }}"
 
 
-- name: check nofile
+
+
+- name: check global nofile
+  shell: |
+    egrep -v "^#|^$" /etc/security/limits.conf | grep nofile | grep "*"
+  changed_when: false
+  ignore_errors: yes
+  register: check_default_nofile_result
+
+- name: Add global nofile
+  lineinfile:
+    path: /etc/security/limits.conf
+    state: present
+    line: "*  soft  nofile  {{ nofile_vars }}\n*  hard  nofile  {{ nofile_vars }}"
+  when: check_default_nofile_result.rc != 0
+
+
+- name: check soft nofile
+  shell: |
+    egrep -v "^#|^$" /etc/security/limits.conf | grep nofile | grep soft | awk '{print $NF}'
+  changed_when: false
+  register: check_soft_nofile_result
+
+- name: modify soft nofile
+  shell: |
+    sed -i "s/^\([a-z,A-Z,*].*soft.*nofile\).*/\1    {{ nofile_vars }}/g" /etc/security/limits.conf
+  when: item|int < nofile_vars|int
+  loop: "{{ check_soft_nofile_result.stdout_lines }}"
+
+
+- name: check hard nofile
   shell: |
     egrep -v "^#|^$" /etc/security/limits.conf | grep nofile | awk '{print $NF}'
   changed_when: false
-  register: check_nofile_result
+  register: check_hard_nofile_result
 
-- name: modify nofile
+- name: modify hard nofile
   shell: |
-    sed -i "s/^\([a-z,A-Z,*].*nofile\).*/\1    {{ nofile_vars }}/g" /etc/security/limits.conf
-  when: item < nofile_vars
-  loop: "{{ check_nofile_result.stdout_lines }}"
+    sed -i "s/^\([a-z,A-Z,*].*hard.*nofile\).*/\1    {{ nofile_vars }}/g" /etc/security/limits.conf
+  when: item|int < nofile_vars|int
+  loop: "{{ check_hard_nofile_result.stdout_lines }}"
 
 
-- name: check nproc
+
+
+- name: check global nproc
+  shell: |
+    egrep -v "^#|^$" /etc/security/limits.conf | grep nproc | grep "*"
+  changed_when: false
+  ignore_errors: yes
+  register: check_default_nproc_result
+
+- name: Add global nproc
+  lineinfile:
+    path: /etc/security/limits.conf
+    state: present
+    line: "*  soft  nproc  {{ nproc_vars }}\n*  hard  nproc  {{ nproc_vars }}"
+  when: check_default_nproc_result.rc != 0
+
+
+- name: check soft nproc
+  shell: |
+    egrep -v "^#|^$" /etc/security/limits.conf | grep nproc | grep soft | awk '{print $NF}'
+  changed_when: false
+  register: check_soft_nproc_result
+
+- name: modify soft nproc
+  shell: |
+    sed -i "s/^\([a-z,A-Z,*].*soft.*nproc\).*/\1    {{ nproc_vars }}/g" /etc/security/limits.conf
+  when: item|int < nproc_vars|int
+  loop: "{{ check_soft_nproc_result.stdout_lines }}"
+
+
+- name: check hard nproc
   shell: |
     egrep -v "^#|^$" /etc/security/limits.conf | grep nproc | awk '{print $NF}'
   changed_when: false
-  register: check_nproc_result
+  register: check_hard_nproc_result
 
-- name: modify nproc
+- name: modify hard nproc
   shell: |
-    sed -i "s/^\([a-z,A-Z,*].*nproc\).*/\1    {{ nproc_vars }}/g" /etc/security/limits.conf
-  when: item < nproc_vars
-  loop: "{{ check_nproc_result.stdout_lines }}"
+    sed -i "s/^\([a-z,A-Z,*].*hard.*nproc\).*/\1    {{ nproc_vars }}/g" /etc/security/limits.conf
+  when: item|int < nproc_vars|int
+  loop: "{{ check_hard_nproc_result.stdout_lines }}"
+
+
 
 
 - name: check modified limits.conf
@@ -73,6 +165,6 @@
   register: check_modified_limits_result
 
 - name: output modified result
-  debug: 
+  debug:
     msg: "{{ check_modified_limits_result.stdout_lines }}"
   when: check_modified_limits_result.rc == 0
